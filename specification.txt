@@ -1,0 +1,226 @@
+# Technical Specification: Multiplatform Messenger Application (GChat - Phase 1)
+
+## 1. Introduction & Overview
+This document outlines the technical specifications for a multiplatform messenger application, initially targeting iOS and Android using Compose Multiplatform. The application will provide users with real-time text-based messaging, media sharing, user authentication, contact management, typing indicators, and online presence. This specification covers both frontend and backend components for the initial phase of development.
+
+## 2. Target Platforms
+-   **Mobile:**
+    -   iOS (Targeting the latest 2 major OS versions at the time of development)
+    -   Android (Targeting API Level 24+ - Android 7.0 Nougat and above)
+
+## 3. Core Features (Phase 1)
+### 3.1. User Authentication
+    -   User registration (primarily with phone number; email/password as an alternative or for account linking/recovery options).
+    -   User login (using phone number and password for Phase 1).
+    -   Secure session management (persistent login using a refresh token mechanism).
+    -   User account deletion (Phase 1 will implement soft delete using an `isDeleted` flag. Data retention policies for soft-deleted accounts to be defined).
+### 3.2. Real-time Chat
+    -   One-on-one text messaging.
+    -   Media messaging (images, short videos - individual files up to 1MB, uploaded to cloud storage).
+    -   Link sharing with basic preview (e.g., title, thumbnail, description when available from the URL).
+    -   Message sending & receiving status indicators (e.g., sent, delivered; read receipts optional for Phase 1).
+    -   Timestamps for messages.
+    -   Display of chat history for each conversation, loaded efficiently.
+### 3.3. Contact Management
+    -   Ability to search for users within the system (e.g., by username or email if public, or by phone number if permission is granted by the searched user).
+    -   Ability to initiate new conversations or view existing ones.
+    -   Display a list of ongoing conversations/contacts, sorted by recent activity.
+### 3.4. Basic User Profiles
+    -   User-settable display name (max 100 characters).
+    -   User-settable profile picture (optional for Phase 1, can use initials as default).
+### 3.5. Push Notifications
+    -   Notifications for new messages when the app is in the background or closed.
+    -   Notification badges on the app icon.
+### 3.6. Typing Indicators
+    -   Display a visual indicator to the user when the other participant in a one-on-one conversation is actively typing a message.
+    -   This will be communicated in real-time via WebSockets (e.g., typing started, typing stopped events).
+### 3.7. Online Presence & '''Last Seen''' Status
+    -   **Online Presence:** Indicate when a user is actively connected to the application (e.g., a visual cue like a green dot or '''online''' status next to their name in contact lists or chat headers, based on an active WebSocket connection or very recent activity).
+    -   **'''Last Seen''' Status:** If a user is not currently online, display the timestamp of when they were last active. The `lastSeenAt` field in the User model will be updated regularly upon user activity (e.g., app foreground, message send/read, active WebSocket ping/pong).
+    -   These statuses will be primarily updated via WebSocket connections for real-time changes and also fetched when loading relevant UI components (e.g., conversation lists, user profiles).
+
+## 4. Frontend Considerations (Compose Multiplatform)
+### 4.1. Technology Stack
+    -   **Shared UI & Business Logic:** Compose Multiplatform for sharing UI, business logic, networking, data models, and domain layer components between iOS and Android.
+    -   **Platform-Specific Code (iOS):** Swift/Objective-C for any necessary platform integrations not covered by Compose Multiplatform (e.g., specific OS services like advanced background tasks, specific push notification interactions, or direct access to certain device hardware not abstracted by Compose Multiplatform).
+    -   **Platform-Specific Code (Android):** Kotlin/Java for any necessary platform integrations not covered by Compose Multiplatform (e.g., specific OS services like advanced background tasks, specific push notification interactions, or direct access to certain device hardware not abstracted by Compose Multiplatform).
+### 4.2. UI/UX Principles
+    -   Clean, intuitive, and responsive user interface designed within Compose Multiplatform.
+    -   **Optimistic UI:** Implement optimistic UI updates for core user actions like sending a message. The message should appear in the UI instantly with a "sending" status before the server confirms its creation, providing a seamless user experience.
+    -   Adaptation to platform-specific idioms and navigation patterns where appropriate, while maximizing shared UI.
+    -   Key Screens: Login/Register, Conversation List, Chat View, Settings, User Profile.
+    -   The application will strive to meet common accessibility guidelines (e.g., WCAG AA where feasible) to ensure usability for a wide range of users. This includes considerations for screen readers, touch target sizes, and color contrast within Compose Multiplatform.
+### 4.3. Data Persistence (Shared Module)
+    -   Local caching of messages, conversation list, and user profiles for offline access and improved performance, managed within the shared Kotlin module.
+    -   Technology: SQLDelight or Realm Kotlin Multiplatform for cross-platform database capabilities.
+### 4.4. API Integration (Shared Module)
+    -   Secure communication with the backend API via HTTPS, managed within the shared Kotlin module using Ktor Client.
+    -   Robust handling of API responses, including error states, loading indicators, and retry mechanisms.
+    -   Serialization/deserialization of data (e.g., Kotlinx Serialization).
+### 4.5. Real-time Updates (Shared Module)
+    -   Integration with the backend'''s real-time communication mechanism using Ktor Client (WebSockets) to receive new messages, typing indicators, and presence updates instantly, managed within the shared Kotlin module.
+### 4.6. Architectural Approach & Coding Guidelines
+    -   **Overall Architecture:** The application will follow Clean Architecture principles, particularly within the shared Kotlin module. This involves separating concerns into distinct layers:
+        -   **Domain Layer:** Contains core business logic, entities (data classes representing fundamental objects like User, Message), and use cases (interactors). This layer will be pure Kotlin and independent of other layers. Repository interfaces will be defined here.
+        -   **Data Layer:** Implements repository interfaces defined in the Domain layer. Responsible for abstracting data sources (network API calls via Ktor, local database via SQLDelight/Realm, media uploads). It decides where to fetch data from and manages data synchronization.
+        -   **Presentation Layer (Shared UI & ViewModels):** Manages the UI state and reacts to user interactions. This layer will utilize the MVI (Model-View-Intent) pattern.
+    -   **MVI (Model-View-Intent) Pattern:**
+        -   **Model:** Represents the UI state (e.g., data to display, loading status, error messages). Models should be immutable. Each state change results in a new Model instance.
+        -   **View:** The Composable functions that render the UI based on the Model. The View observes state changes and sends user actions as Intents.
+        -   **Intent:** Represents a user'''s intention to perform an action (e.g., button click, form submission, screen load, media selection).
+        -   **ViewModel/StateHolder:** A component (typically per screen or complex UI component) that listens to Intents, processes them (often by invoking Use Cases from the Domain layer), updates the Model (state), and exposes the Model to the View. This ensures a unidirectional data flow (State flows down, Intents/Events flow up).
+    -   **Dependency Rule:** Dependencies will flow inwards: Presentation -> Domain <- Data. The Domain layer will have no knowledge of the Presentation or Data layers beyond its defined interfaces. Dependency Injection will be used to provide concrete implementations.
+    -   **Coding Guidelines:**
+        -   Adherence to the latest official Kotlin coding conventions from Google and JetBrains.
+        -   Emphasis on readability, maintainability, and testability.
+        -   Use of Kotlin coroutines for asynchronous operations.
+        -   Comprehensive unit tests for business logic (Domain layer, ViewModels) and integration tests where appropriate.
+### 4.7. Client-Side Logging
+    -   Minimal client-side logging will be implemented for diagnostics and to understand user flows.
+    -   Focus will be on logging errors and critical events.
+    -   Logged events will include:
+        -   Application lifecycle: App start, background, foreground transitions.
+        -   Authentication: Login attempt, success, failure (with non-sensitive error type); registration attempt, success, failure; logout.
+        -   Message operations: Message send attempt, success, failure; message receive success, failure (if detectable by client).
+        -   Media operations: Media selection, upload initiation, success, failure.
+        -   Critical API call failures (client-side, e.g., network unavailability before send, unexpected response codes not handled as specific errors).
+        -   Local database operation failures.
+        -   Push notification received by app, push notification opened by user.
+    -   Sensitive information (passwords, message content, PII) will NOT be logged. Log levels (Error, Warning, Info, Debug) will be used appropriately.
+    -   (Consideration for future: Remote logging to a centralized service for aggregated analysis).
+### 4.8. Internationalization (i18n) & Localization (l10n)
+    -   The application architecture in the shared Compose Multiplatform module should be designed with future internationalization in mind (e.g., by using string resources through an abstraction), even if Phase 1 only supports a single language (e.g., English).
+
+## 5. Backend Considerations
+### 5.1. API Design
+    -   RESTful API for stateless interactions (user auth, profile management, fetching historical data, media upload coordination). A simple API versioning strategy (e.g., `/v1/` in the URL path) will be adopted from the start.
+    -   Endpoints for:
+        -   User: Register, Login, Logout, Refresh-Token, Get/Update Profile, Delete User.
+        -   Conversations: List Conversations, Get Conversation Details (including participants).
+        -   Messages: Send Message (text, link, or reference to uploaded media), Get Message History (paginated).
+        -   Media: Request Signed Upload URL (for client to upload media to cloud storage), Confirm Media Upload (client notifies backend after successful upload).
+### 5.2. Real-time Communication
+    -   WebSockets for bi-directional, real-time message delivery, implemented using Ktor WebSockets. WebSockets will also handle real-time transmission of typing status (start/stop events) and manage presence updates (e.g., user connect/disconnect events, heartbeats to maintain online status, and broadcasting activity).
+    -   **Connection Handling:** The WebSocket connection must be authenticated (e.g., by passing a valid JWT as a parameter on initial connection). Clients must implement automatic reconnection logic with anponential backoff strategy to handle intermittent network issues.
+### 5.3. Database
+    -   **Primary Choice:** PostgreSQL (latest stable version). This offers robustness, ACID compliance, and flexibility for relational data.
+    -   *(Alternative for simplified BaaS/Real-time Sync: Firebase Firestore could be considered if rapid development and managed real-time synchronization are prioritized over complex relational queries, but PostgreSQL is the primary target.)*
+    -   Schema to store users, messages, conversations, conversation participants.
+    -   Indexes for efficient querying of messages by conversation, users by identifiers, etc.
+### 5.4. Authentication & Authorization
+    -   **Token-based Authentication:** The system will use short-lived JWTs (Access Tokens) to authenticate API requests. To maintain a persistent session, the backend will also issue a long-lived, single-use Refresh Token upon login. The client will use this refresh token to request a new access token when the old one expires. Refresh tokens will be stored securely on the client (e.g., iOS Keychain, Android EncryptedSharedPreferences) and will be invalidated by the server after use.
+    -   **Password Security:** Secure password hashing and storage (e.g., bcrypt, scrypt, or Argon2).
+    -   **Authorization Middleware:** Middleware will protect endpoints and resources, ensuring a user can only access their own data.
+### 5.5. Scalability & Performance
+    -   Stateless application server design to facilitate horizontal scaling.
+    -   Efficient database connection pooling.
+    -   Consider use of caching layers (e.g., Redis) for frequently accessed data.
+    -   Asynchronous task processing for non-blocking operations (e.g., sending notifications, processing link previews if done server-side).
+### 5.6. Security
+    -   Enforce HTTPS for all client-server communication.
+    -   Input validation and sanitization on all incoming data, including user-provided strings like `displayName`, to prevent common vulnerabilities (e.g., OWASP Top 10, XSS).
+    -   Rate limiting and brute-force protection.
+    -   Ensure messages can only be sent by the authenticated user associated with `senderPhoneNumber` and cannot be easily spoofed or tampered with by other users.
+### 5.7. Push Notification Gateway
+    -   Server-side integration with APNS (Apple Push Notification Service) for iOS.
+    -   Server-side integration with FCM (Firebase Cloud Messaging) for Android.
+    -   Logic to store device tokens and send notifications upon new message events.
+### 5.8. Technology Stack
+    -   **Backend Framework:** Kotlin with Ktor (for both REST API and WebSockets).
+    -   **Database:** PostgreSQL.
+    -   **Media Storage:** Google Cloud Storage.
+    -   **(Other potential tools:** Caching with Redis, etc.)
+### 5.9. Media Handling & Storage
+    -   User-uploaded media (images, videos) will be stored in Google Cloud Storage.
+    -   Clients will request a signed URL from the backend to upload directly to GCS.
+    -   After successful upload, the client will notify the backend with the media identifier/URL.
+    -   The backend will then associate this media with a message.
+    -   Consideration for generating thumbnails server-side for uploaded media if not provided by client or for consistency.
+    -   Link previews will be attempted client-side first; if complex or requires specific user-agent, backend assistance might be a fallback (future).
+
+## 6. Data Models (High-Level Conceptual - Defined in Shared Kotlin Module)
+All timestamps will be stored as UTC milliseconds since the Unix epoch (Long).
+### 6.1. User
+    -   phoneNumber (String, Primary Key, Unique, Indexed) // Primary user identifier
+    -   hashedPassword (String)
+    -   displayName (String, Max 100 characters)
+    -   username (String, Unique, Indexed, Optional)
+    -   email (String, Unique, Indexed, Optional)
+    -   profilePictureURL (String, Optional)
+    -   createdAt (Long)
+    -   updatedAt (Long)
+    -   lastSeenAt (Long) // Regularly updated on user activity, used for '''last seen''' and to determine '''online''' status
+    -   isDeleted (Boolean, Default: false) // For soft delete
+### 6.2. Conversation
+    -   conversationID (String/UUID, Primary Key)
+    -   type (Enum: ONE_TO_ONE, GROUP - for future)
+    -   createdAt (Long)
+    -   updatedAt (Long, e.g., on new message)
+    -   lastMessageID (String/UUID, ForeignKey to Message, Optional)
+### 6.3. ConversationParticipant
+    -   conversationParticipantID (String/UUID, Primary Key)
+    -   conversationID (String/UUID, ForeignKey to Conversation, Indexed)
+    -   userPhoneNumber (String, ForeignKey to User.phoneNumber, Indexed) // References User'''s primary key
+    -   joinedAt (Long)
+### 6.4. Message
+    -   messageID (String/UUID, Primary Key)
+    -   conversationID (String/UUID, ForeignKey to Conversation, Indexed)
+    -   senderPhoneNumber (String, ForeignKey to User.phoneNumber, Indexed) // References User'''s primary key
+    -   messageType (Enum: TEXT, IMAGE, VIDEO, LINK)
+    -   textContent (String, Optional) // For TEXT messages or caption for IMAGE/VIDEO/LINK
+    -   mediaURL (String, Optional) // URL to uploaded image/video in cloud storage
+    -   mediaMimeType (String, Optional) // e.g., image/jpeg, video/mp4
+    -   mediaFileSize (Long, Optional) // In bytes, max 1MB (1024*1024 bytes)
+    -   linkURL (String, Optional) // The original URL for LINK messages
+    -   thumbnailURL (String, Optional) // URL for a thumbnail (for media or link preview)
+    -   linkTitle (String, Optional)
+    -   linkDescription (String, Optional)
+    -   linkImageURL (String, Optional) // Image URL extracted from link metadata
+    -   linkSiteName (String, Optional)
+    -   sentAt (Long)
+
+## 7. Deployment Considerations
+### 7.1. Backend
+    -   **Cloud Hosting Provider:** Google Cloud Platform (GCP).
+    -   **Services:** Google Kubernetes Engine (GKE) for orchestration, Cloud SQL for PostgreSQL, or self-managed PostgreSQL on Compute Engine. Google Cloud Storage for media assets.
+    -   Containerization (Docker) and orchestration (Kubernetes) for scalability and manageability.
+    -   CI/CD pipelines for automated testing and deployment (e.g., Google Cloud Build, Jenkins, GitHub Actions).
+### 7.2. Frontend (Compose Multiplatform context)
+    -   Build artifacts for iOS (e.g., .framework or .xcframework) and Android (AAR/library module) generated from the Compose Multiplatform project.
+    -   Distribution via Apple App Store (iOS) and Google Play Store (Android).
+    -   Automated build and release processes for both platforms and the shared module (e.g., Fastlane, Codemagic, GitHub Actions).
+
+## 9. Project Structure
+The project will be organized within a single monorepo to facilitate easy access and integration between frontend and backend components, especially during development. The proposed high-level directory structure under the root `GChat/` folder is as follows:
+
+*   `GChat/`
+    *   `backend/` (or `server/`): Houses the Ktor backend project, including its own `build.gradle.kts`, `src/` directory for backend-specific logic, API endpoints, and database interactions.
+    *   `shared/`: The Compose Multiplatform shared module. This module contains common code for both Android and iOS, including:
+        *   Business logic (Use Cases/Interactors from Clean Architecture).
+        *   Data models (User, Message, Conversation, etc.).
+        *   Networking code (Ktor client for API communication, WebSocket handling).
+        *   Repository interfaces and their implementations (connecting to backend and local cache).
+        *   Shared Composable UI elements where feasible and appropriate.
+    *   `androidApp/`: The Android application module. This module depends on the `shared/` module and contains Android-specific UI, platform integrations (e.g., specific Android services, permissions handling), and the main Android application setup.
+    -   `iosApp/`: The Xcode project for the iOS application. This project consumes the framework built from the `shared/` module and handles iOS-specific UI, platform integrations, and application setup.
+    *   `build.gradle.kts`: The root project's Gradle build script.
+    *   `settings.gradle.kts`: The root project's Gradle settings script, which will include `':shared'`, `':androidApp'`, and likely `':backend'` as Gradle subprojects to ensure they are recognized by the build system and IDE.
+
+This structure allows for logical separation of concerns while maintaining a unified view of the entire application within a single IDE project, streamlining development and cross-component changes.
+
+### 9.1 Dependency Management & Versioning
+To ensure consistency, maintainability, and ease of upgrades, all project dependencies and plugin versions (both for Gradle plugins and direct library dependencies) will be centrally managed using Gradle's Versions Catalog feature via the `gradle/libs.versions.toml` file. This includes version references for Kotlin, Compose, Ktor, AndroidX, and all other third-party libraries.
+
+## 10. Future Considerations (Post Phase 1)
+    -   Group chats
+    -   SMS-based phone number verification and transition to passwordless login.
+    -   End-to-end encryption (E2EE)
+    -   Message editing and deletion (beyond soft delete of users)
+    -   User blocking and reporting
+    -   Voice and video calls
+    -   Message reactions
+    -   Advanced media features (e.g., albums, higher resolution/size limits, server-side transcoding/thumbnailing for link previews).
+    -   Centralized remote logging and analytics.
+
+## 11. Installation and Deployment Guide
+(This section will be developed alongside the application.)
