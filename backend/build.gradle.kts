@@ -21,7 +21,7 @@ dependencies {
     implementation(libs.exposed.jdbc)
     implementation(libs.h2.database)
     implementation(libs.ktor.server.auth.jwt)
-    implementation(libs.jbcrypt) // New dependency
+    implementation(libs.jbcrypt)
     testImplementation(libs.ktor.server.tests.jvm)
     testImplementation(libs.kotlin.test.junit)
 }

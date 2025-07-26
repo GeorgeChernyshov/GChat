@@ -23,22 +23,23 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(compose.runtime)
+            implementation(libs.androidx.lifecycle.viewmodel)
             // Ktor for networking
-            implementation("io.ktor:ktor-client-core:2.3.4")
-            implementation("io.ktor:ktor-client-content-negotiation:2.3.4")
-            implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
 
             // Kotlinx Serialization
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.0")
+            implementation(libs.kotlinx.serialization.core)
 
             // Coroutines
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+            implementation(libs.kotlinx.coroutines.core)
         }
         androidMain.dependencies {
-            implementation("io.ktor:ktor-client-android:2.3.4")
+            implementation(libs.ktor.client.android)
         }
         iosMain.dependencies {
-            implementation("io.ktor:ktor-client-darwin:2.3.4")
+            implementation(libs.ktor.client.darwin)
         }
     }
 }
@@ -58,7 +59,7 @@ android {
     buildFeatures {
         compose = true
     }
-
+    
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }

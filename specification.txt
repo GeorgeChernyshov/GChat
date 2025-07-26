@@ -211,7 +211,43 @@ This structure allows for logical separation of concerns while maintaining a uni
 ### 9.1 Dependency Management & Versioning
 To ensure consistency, maintainability, and ease of upgrades, all project dependencies and plugin versions (both for Gradle plugins and direct library dependencies) will be centrally managed using Gradle's Versions Catalog feature via the `gradle/libs.versions.toml` file. This includes version references for Kotlin, Compose, Ktor, AndroidX, and all other third-party libraries.
 
-## 10. Future Considerations (Post Phase 1)
+## 10. Code Style
+To maintain consistency and readability across the codebase, the following style guidelines must be adhered to:
+
+### 10.1. Parameter Formatting
+For function/constructor calls and declarations involving more than two parameters:
+    - Each parameter must be placed on a new, indented line.
+    - For function/constructor calls, named arguments must be used for each parameter.
+    - A single blank line must follow the closing parenthesis of such a multi-line parameter list before the next statement or declaration.
+
+    Example (Function Call):
+    ```kotlin
+    _state.value = _state.value.copy(
+        isLoading = true,
+        error = null,
+        successMessage = null
+    )
+
+    val result = registerUseCase(request) // Note the blank line above
+    ```
+    Example (Function Declaration):
+    ```kotlin
+    fun createComplexObject(
+        id: String,
+        name: String,
+        type: String,
+        isEnabled: Boolean = true
+    ): ComplexObject {
+        // ... function body ...
+    }
+
+    // Next function or class definition
+    class AnotherClass { /* ... */ }
+    ```
+### 10.2. Line Length
+No line of code should exceed 100 characters in length. This includes comments and all other text within code files. Lines should be broken appropriately to maintain this limit, prioritizing readability.
+
+## 11. Future Considerations (Post Phase 1)
     -   Group chats
     -   SMS-based phone number verification and transition to passwordless login.
     -   End-to-end encryption (E2EE)
@@ -222,5 +258,5 @@ To ensure consistency, maintainability, and ease of upgrades, all project depend
     -   Advanced media features (e.g., albums, higher resolution/size limits, server-side transcoding/thumbnailing for link previews).
     -   Centralized remote logging and analytics.
 
-## 11. Installation and Deployment Guide
+## 12. Installation and Deployment Guide
 (This section will be developed alongside the application.)
