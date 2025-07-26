@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet // Required for named<KotlinSourceSet>
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.multiplatform)
@@ -9,37 +11,56 @@ plugins {
 kotlin {
     jvmToolchain(17)
     androidTarget()
+    jvm()
     
-    listOf(
+    val iosTargets = listOf(
         iosX64(),
         iosArm64(),
         iosSimulatorArm64()
-    ).forEach {
+    )
+
+    iosTargets.forEach {
         it.binaries.framework {
             baseName = "shared"
+        }
+        it.compilations.getByName("main").defaultSourceSet.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
     }
 
     sourceSets {
-        commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(libs.androidx.lifecycle.viewmodel)
-            // Ktor for networking
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.kotlinx.json)
+        sourceSets.named<KotlinSourceSet>("commonMain") {
+            dependencies {
+                //compose
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.materialIconsExtended) // Added for Icons.Filled.Visibility
 
-            // Kotlinx Serialization
-            implementation(libs.kotlinx.serialization.core)
+                implementation(libs.androidx.lifecycle.viewmodel)
+                implementation(libs.kotlinx.coroutines.core)
 
-            // Coroutines
-            implementation(libs.kotlinx.coroutines.core)
+                //koin
+                implementation(libs.koin.compose.viewmodel)
+
+                //ktor
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.kotlinx.json)
+                implementation(libs.kotlinx.serialization.core)
+
+                // Voyager
+                implementation(libs.voyager.navigator)
+                implementation(libs.voyager.transitions)
+                implementation(libs.voyager.koin)
+            }
         }
-        androidMain.dependencies {
-            implementation(libs.ktor.client.android)
-        }
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
+
+        sourceSets.named<KotlinSourceSet>("androidMain") {
+            dependencies {
+                implementation(libs.ktor.client.android)
+                implementation(libs.ktor.client.okhttp)
+            }
         }
     }
 }
@@ -50,17 +71,14 @@ android {
     defaultConfig {
         minSdk = 26
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
     buildFeatures {
         compose = true
     }
-    
     composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
+        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get() 
     }
 }
