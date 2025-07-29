@@ -39,6 +39,7 @@ kotlin {
 
                 implementation(libs.androidx.lifecycle.viewmodel)
                 implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kermit)
 
                 //koin
                 implementation(libs.koin.compose.viewmodel)

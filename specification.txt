@@ -138,6 +138,47 @@ This document outlines the technical specifications for a multiplatform messenge
     -   Consideration for generating thumbnails server-side for uploaded media if not provided by client or for consistency.
     -   Link previews will be attempted client-side first; if complex or requires specific user-agent, backend assistance might be a fallback (future).
 
+## 6. Shared Module Architecture
+
+The `shared` module of this project adheres to a layered architectural pattern, similar to Clean Architecture principles. This design promotes separation of concerns, testability, and maintainability by organizing code into distinct layers, with dependencies flowing inwards.
+
+### 6.1. Layer Breakdown:
+
+*   **Data Layer (`data` package):**
+    *   **Purpose:** Responsible for data retrieval, storage, and manipulation. It abstracts the specifics of how data is obtained (e.g., network, local database, preferences).
+    *   **Sub-packages:**
+        *   `model`: Contains simple data structures (data classes) that represent data transfer objects (DTOs) for network communication or entities for persistence. These are typically technology-agnostic data definitions. (e.g., `RegisterRequest`, `LoginRequest`, `TokenResponse`).
+        *   `source`: Defines and implements specific data sources (e.g., `AuthDataSource`). This sub-package handles direct interaction with external APIs (like Ktor HTTP client) or databases.
+        *   `repository`: Defines interfaces (`AuthRepository`) and their concrete implementations (`AuthRepositoryImpl`). Repositories act as a facade for data operations, abstracting the underlying data sources from the domain layer. They handle data mapping and error handling specific to data retrieval.
+
+*   **Domain Layer (`domain` package):**
+    *   **Purpose:** Contains the core business logic and rules of the application. This layer is entirely independent of any technology (UI, database, network) and represents the "what" of the application.
+    *   **Sub-packages:**
+        *   `usecase`: Encapsulates specific application features or business rules as "use cases" or "interactors" (e.g., `RegisterUseCase`). Each use case typically orchestrates one specific interaction or task, often by collaborating with one or more repositories.
+        *   `repository`: Defines interfaces for repositories (e.g., `AuthRepository`). These interfaces are defined in the domain layer to enforce the Dependency Inversion Principle, ensuring the domain layer depends on abstractions, not concrete implementations.
+
+*   **Presentation Layer (`presentation` package):**
+    *   **Purpose:** Responsible for displaying information to the user and handling user input. It's the highest level of the application, coordinating with the domain layer to update the UI.
+    *   **Sub-packages (example for authentication feature):**
+        *   `auth`: Contains ViewModels (`AuthViewModel`) which manage the UI state, expose data to the UI, and delegate business operations to the use cases.
+        *   `auth.ui`: Contains UI-specific components (e.g., `RegisterScreen`, `RegisterScreenUiState`). These are typically Compose UI components in Kotlin Multiplatform projects, binding directly to ViewModel state.
+        *   `navigation`: Manages navigation within the application. This typically involves an abstraction (like a Navigator interface or a routing system) that allows ViewModels and UI components to trigger navigation actions (e.g., `navigator.pop()`, `navigator.navigate(destination)`), keeping navigation logic decoupled from specific UI implementations.
+
+*   **Dependency Injection (`di` package):**
+    *   **Purpose:** Manages the instantiation and provision of dependencies across the different layers. It binds interfaces to their concrete implementations and ensures components receive the correct dependencies they need.
+    *   **Key Component:** `KoinModule.kt` (or similar for other DI frameworks like Kodein, Hilt/Dagger if JVM-specific).
+
+### 6.2. Dependency Flow:
+
+Dependencies flow inwards, meaning outer layers depend on inner layers, but inner layers remain independent of outer layers.
+`Presentation Layer` -> `Domain Layer` -> `Data Layer`
+
+*   `ViewModels` (Presentation) depend on `Use Cases` (Domain).
+*   `Use Cases` (Domain) depend on `Repository Interfaces` (Domain).
+*   `Repository Implementations` (Data) depend on `Data Sources` (Data) and implement `Repository Interfaces` (Domain).
+
+This structure makes the application robust, scalable, and easy to test, as each layer can be tested independently of the others.
+
 ## 6. Data Models (High-Level Conceptual - Defined in Shared Kotlin Module)
 All timestamps will be stored as UTC milliseconds since the Unix epoch (Long).
 ### 6.1. User
@@ -179,13 +220,75 @@ All timestamps will be stored as UTC milliseconds since the Unix epoch (Long).
     -   linkSiteName (String, Optional)
     -   sentAt (Long)
 
-## 7. Deployment Considerations
-### 7.1. Backend
+## 7. Logging Guidelines
+
+This project uses Kermit (by Touchlab) as the standard logging library
+
+Kermit is defined in the `libs.versions.toml` file:
+```
+[versions]
+kermit = "2.0.2" # Or the current version used
+
+[libraries]
+kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
+```
+
+And included as a dependency in the relevant `build.gradle.kts` files
+
+### 7.2. Basic Usage:
+Log messages using the appropriate severity level. Kermit uses lambda-based messages for lazy evaluation:
+```kotlin
+// Debug message
+Logger.d { "This is a debug message: someVariable = $someVariable" }
+
+// Info message
+Logger.i { "User successfully logged in." }
+
+// Warning message
+Logger.w { "Network request timed out, retrying..." }
+
+// Error message
+Logger.e { "An unexpected error occurred." }
+
+// Error message with a throwable
+try {
+    // some operation that might fail
+} catch (e: Exception) {
+    Logger.e(e) { "Failed to process data." }
+}
+```
+
+### 7.3. Tagging:
+
+While Kermit supports global tags, it's often cleaner to include contextual information directly in the log message or use per-logger tags if setting up specific logger instances. For general shared module logging, class names or feature areas can be prefixed in the message string:
+```kotlin
+Logger.d { "AuthViewModel: User clicked login button." }
+Logger.e(e) { "AuthRepositoryImpl: Failed to fetch token from network." }
+```
+
+Alternatively, if you create specific Logger instances:
+```kotlin
+private val log = Logger(tag = "MySpecificComponent")
+// ...
+log.i { "Component initialized." }
+```
+For most cases in the `shared` module, using the static `Logger` methods with clear messages is sufficient.
+
+### 7.4. Where to Use:
+
+*   **`shared` module:** Use Kermit for all logging within `commonMain`, `androidMain`, `iosMain`, etc.
+*   **`androidApp` / `iosApp`:** Can continue using Kermit for consistency.
+*   **`backend` module (if applicable):** Kermit can also be used in the JVM-based backend module for unified logging, replacing other JVM-specific loggers like Logback if desired.
+
+By adhering to these guidelines, the project will maintain a consistent and effective logging strategy.
+
+## 8. Deployment Considerations
+### 8.1. Backend
     -   **Cloud Hosting Provider:** Google Cloud Platform (GCP).
     -   **Services:** Google Kubernetes Engine (GKE) for orchestration, Cloud SQL for PostgreSQL, or self-managed PostgreSQL on Compute Engine. Google Cloud Storage for media assets.
     -   Containerization (Docker) and orchestration (Kubernetes) for scalability and manageability.
     -   CI/CD pipelines for automated testing and deployment (e.g., Google Cloud Build, Jenkins, GitHub Actions).
-### 7.2. Frontend (Compose Multiplatform context)
+### 8.2. Frontend (Compose Multiplatform context)
     -   Build artifacts for iOS (e.g., .framework or .xcframework) and Android (AAR/library module) generated from the Compose Multiplatform project.
     -   Distribution via Apple App Store (iOS) and Google Play Store (Android).
     -   Automated build and release processes for both platforms and the shared module (e.g., Fastlane, Codemagic, GitHub Actions).
@@ -203,13 +306,13 @@ The project will be organized within a single monorepo to facilitate easy access
         *   Shared Composable UI elements where feasible and appropriate.
     *   `androidApp/`: The Android application module. This module depends on the `shared/` module and contains Android-specific UI, platform integrations (e.g., specific Android services, permissions handling), and the main Android application setup.
     -   `iosApp/`: The Xcode project for the iOS application. This project consumes the framework built from the `shared/` module and handles iOS-specific UI, platform integrations, and application setup.
-    *   `build.gradle.kts`: The root project's Gradle build script.
-    *   `settings.gradle.kts`: The root project's Gradle settings script, which will include `':shared'`, `':androidApp'`, and likely `':backend'` as Gradle subprojects to ensure they are recognized by the build system and IDE.
+    *   `build.gradle.kts`: The root project'''s Gradle build script.
+    *   `settings.gradle.kts`: The root project'''s Gradle settings script, which will include `':shared'`, `':androidApp'`, and likely `':backend'` as Gradle subprojects to ensure they are recognized by the build system and IDE.
 
 This structure allows for logical separation of concerns while maintaining a unified view of the entire application within a single IDE project, streamlining development and cross-component changes.
 
 ### 9.1 Dependency Management & Versioning
-To ensure consistency, maintainability, and ease of upgrades, all project dependencies and plugin versions (both for Gradle plugins and direct library dependencies) will be centrally managed using Gradle's Versions Catalog feature via the `gradle/libs.versions.toml` file. This includes version references for Kotlin, Compose, Ktor, AndroidX, and all other third-party libraries.
+To ensure consistency, maintainability, and ease of upgrades, all project dependencies and plugin versions (both for Gradle plugins and direct library dependencies) will be centrally managed using Gradle'''s Versions Catalog feature via the `gradle/libs.versions.toml` file. This includes version references for Kotlin, Compose, Ktor, AndroidX, and all other third-party libraries.
 
 ## 10. Code Style
 To maintain consistency and readability across the codebase, the following style guidelines must be adhered to:

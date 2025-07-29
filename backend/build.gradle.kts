@@ -32,7 +32,7 @@ dependencies {
     // implementation(libs.ktor.server.netty.jvm) // If using Netty
     implementation(libs.ktor.server.content.negotiation.jvm)
     implementation(libs.ktor.serialization.kotlinx.json.jvm)
-    implementation(libs.logback.classic)
+    implementation(libs.kermit)
     implementation(libs.exposed.core)
     implementation(libs.exposed.jdbc)
     implementation(libs.h2.database) // For local testing/init

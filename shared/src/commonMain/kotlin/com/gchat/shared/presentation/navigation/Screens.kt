@@ -1,4 +1,4 @@
-package com.gchat.shared.navigation
+package com.gchat.shared.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import cafe.adriel.voyager.core.screen.Screen

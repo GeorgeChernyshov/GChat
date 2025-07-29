@@ -14,7 +14,7 @@ compose-ui = "1.6.7"
 compose-material3 = "1.2.1"
 androidx-activity-compose = "1.9.0"
 ktor = "2.3.4"
-logback = "1.4.11"
+kermit = "2.0.2"
 kotlinTestJunit = "1.9.0"
 kotlinxSerialization = "1.6.0"
 kotlinxCoroutines = "1.7.3"
@@ -30,7 +30,7 @@ voyagerVersion = "1.0.0"
 koinComposeViewmodel = "4.0.1"
 
 [libraries]
-logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }

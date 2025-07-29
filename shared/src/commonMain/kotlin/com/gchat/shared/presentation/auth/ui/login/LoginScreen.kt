@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.gchat.shared.models.LoginRequest
+import com.gchat.shared.data.model.auth.LoginRequest
 import com.gchat.shared.presentation.auth.AuthEvent
 import com.gchat.shared.presentation.auth.AuthIntent
 import com.gchat.shared.presentation.auth.AuthViewModel
@@ -45,10 +45,9 @@ object LoginScreen : Screen {
     override fun Content() {
         val authViewModel = koinViewModel<AuthViewModel>()
         val authState by authViewModel.state.collectAsState()
+        val uiState by authViewModel.loginUiState.collectAsState()
         val navigator = LocalNavigator.currentOrThrow
 
-        var phoneNumber by remember { mutableStateOf("") }
-        var password by remember { mutableStateOf("") }
         var passwordVisible by remember { mutableStateOf(false) }
 
         LaunchedEffect(Unit) {
@@ -77,16 +76,16 @@ object LoginScreen : Screen {
             Text(text = "Login", style = MaterialTheme.typography.headlineMedium)
 
             OutlinedTextField(
-                value = phoneNumber,
-                onValueChange = { phoneNumber = it },
+                value = uiState.phoneNumber,
+                onValueChange = authViewModel::onLoginPhoneNumberChange,
                 label = { Text("Phone Number") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             )
 
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = uiState.password,
+                onValueChange = authViewModel::onLoginPasswordChange,
                 label = { Text("Password") },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -107,7 +106,7 @@ object LoginScreen : Screen {
             Button(
                 onClick = {
                     val intent = AuthIntent.Login(
-                        request = LoginRequest(phoneNumber, password)
+                        request = LoginRequest(uiState.phoneNumber, uiState.password)
                     )
 
                     authViewModel.onIntent(intent)
