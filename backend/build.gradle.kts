@@ -29,6 +29,7 @@ kotlin {
 dependencies {
     implementation(libs.ktor.server.core.jvm)
     implementation(libs.ktor.server.cio.jvm)
+    implementation(libs.ktor.client.content.negotiation)
     // implementation(libs.ktor.server.netty.jvm) // If using Netty
     implementation(libs.ktor.server.content.negotiation.jvm)
     implementation(libs.ktor.serialization.kotlinx.json.jvm)

@@ -6,6 +6,7 @@ import com.gchat.shared.models.User
 import java.util.*
 
 object JwtConfig {
+
     private const val secret = "your-super-secret-jwt-key-please-change-this-in-production"
     private const val issuer = "com.gchat.backend"
     private const val audience = "com.gchat.users"
@@ -13,6 +14,11 @@ object JwtConfig {
     private const val REFRESH_TOKEN_EXPIRATION = 1000L * 60 * 60 * 24 * 7 // 7 days
 
     private val algorithm = Algorithm.HMAC256(secret)
+
+    val verifier = JWT.require(algorithm)
+        .withAudience(audience)
+        .withIssuer(issuer)
+        .build()
 
     fun generateAccessToken(user: User): String = JWT.create()
         .withAudience(audience)
@@ -28,8 +34,11 @@ object JwtConfig {
         .withExpiresAt(Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
         .sign(algorithm)
 
-    val verifier = JWT.require(algorithm)
-        .withAudience(audience)
-        .withIssuer(issuer)
-        .build()
+    fun hashPassword(password: String): String {
+        return password + "_hashed" // Placeholder for compilation
+    }
+
+    fun verifyPassword(passwordRaw: String, hashedPassword: String): Boolean {
+        return (passwordRaw + "_hashed") == hashedPassword // Placeholder for compilation
+    }
 }

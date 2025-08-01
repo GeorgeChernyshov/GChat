@@ -24,7 +24,7 @@ class UserService {
         isDeleted = row[Users.isDeleted]
     )
 
-    fun registerUser(phoneNumber: String, password: String, displayName: String): User? {
+    fun registerUser(phoneNumber: String, password: String): User? {
         return transaction {
             if (Users.select { Users.phoneNumber eq phoneNumber }.count() > 0) {
                 // User with this phone number already exists
@@ -37,7 +37,7 @@ class UserService {
             val insertStatement = Users.insert {
                 it[Users.phoneNumber] = phoneNumber
                 it[Users.hashedPassword] = hashedPassword
-                it[Users.displayName] = displayName
+                it[Users.displayName] = phoneNumber
                 it[Users.createdAt] = currentTime
                 it[Users.updatedAt] = currentTime
                 it[Users.lastSeenAt] = currentTime

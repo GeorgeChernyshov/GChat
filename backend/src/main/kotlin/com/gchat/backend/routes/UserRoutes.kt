@@ -2,9 +2,9 @@ package com.gchat.backend.routes
 
 import com.gchat.backend.security.JwtConfig
 import com.gchat.backend.services.UserService
-import com.gchat.shared.models.AuthResponse
-import com.gchat.shared.models.LoginRequest
-import com.gchat.shared.models.RegisterRequest
+import com.gchat.shared.data.model.auth.AuthResponse
+import com.gchat.shared.data.model.auth.LoginRequest
+import com.gchat.shared.data.model.auth.RegisterRequest
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -17,15 +17,21 @@ fun Route.userRoutes(userService: UserService) {
             val request = call.receive<RegisterRequest>()
 
             // Basic validation
-            if (request.phoneNumber.isBlank() || request.password.isBlank() || request.displayName.isBlank()) {
-                return@post call.respond(HttpStatusCode.BadRequest, "Phone number, password, and display name cannot be empty")
+            if (request.phoneNumber.isBlank() || request.password.isBlank()) {
+                return@post call.respond(
+                    HttpStatusCode.BadRequest,
+                    "Phone number and password cannot be empty"
+                )
             }
             if (request.password.length < 6) {
-                return@post call.respond(HttpStatusCode.BadRequest, "Password must be at least 6 characters long")
+                return@post call.respond(
+                    HttpStatusCode.BadRequest,
+                    "Password must be at least 6 characters long"
+                )
             }
             // TODO: Add more robust phone number and display name validation/sanitization
 
-            val user = userService.registerUser(request.phoneNumber, request.password, request.displayName)
+            val user = userService.registerUser(request.phoneNumber, request.password)
 
             if (user == null) {
                 call.respond(HttpStatusCode.Conflict, "User with this phone number already exists")
